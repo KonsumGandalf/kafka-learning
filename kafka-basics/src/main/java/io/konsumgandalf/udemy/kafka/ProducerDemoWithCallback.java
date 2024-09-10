@@ -16,33 +16,44 @@ public class ProducerDemoWithCallback {
     public static void main(String[] args) {
         _log.info("Hello world!");
 
-        Properties properties = new Properties();
+        Properties props = PropertiesFactory.getProducerProps();
 
-        properties.setProperty("bootstrap.servers", "localhost:9092");
+        KafkaProducer<String, String> producer = new KafkaProducer<>(props);
 
-        properties.setProperty("key.serializer", StringSerializer.class.getName());
-        properties.setProperty("value.serializer", StringSerializer.class.getName());
+        int partition = 1; // Specify the partition
+        String key = "key";
+        String value = "hello world";
 
-        KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 
-        ProducerRecord<String, String> producerRecord = new ProducerRecord<>("first_topic", "hello world");
-
-        producer.send(producerRecord, new Callback() {
-            @Override
-            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-                // executes every time a record is successfully sent or an exception is thrown
-                if (e == null) {
-                    // the record was successfully sent
-                    _log.info("Received new metadata. \n" +
-                            "Topic: " + recordMetadata.topic() + "\n" +
-                            "Partition: " + recordMetadata.partition() + "\n" +
-                            "Offset: " + recordMetadata.offset() + "\n" +
-                            "Timestamp: " + recordMetadata.timestamp());
-                } else {
-                    _log.error("Error while producing", e);
-                }
+        for (int i=0; i <= 10; i++) {
+            for (int j=0; j <= 30; j++) {
+                ProducerRecord<String, String> producerRecord = new ProducerRecord<>(ClusterConfig.TOPIC.getValue(), value + i);
+                producer.send(producerRecord, new Callback() {
+                    @Override
+                    public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                        // Executes every time a record is successfully sent or an exception is thrown
+                        if (e == null) {
+                            // The record was successfully sent
+                            _log.info("Received new metadata. \n" +
+                                    "Topic: " + recordMetadata.topic() + "\n" +
+                                    "Partition: " + recordMetadata.partition() + "\n" +
+                                    "Offset: " + recordMetadata.offset() + "\n" +
+                                    "Timestamp: " + recordMetadata.timestamp());
+                        } else {
+                            _log.error("Error while producing", e);
+                        }
+                    }
+                });
             }
-        });
+
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+
 
         // Flush would be called automatically when the producer is closed
         producer.flush();
